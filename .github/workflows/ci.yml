@@ -57,9 +57,13 @@ jobs:
           go test -v -short ./...
 
       - name: Run integration tests
-        working-directory: ./${{ matrix.service }}/tests
+        working-directory: ./${{ matrix.service }}
         run: |
-          go test -v ./...
+          if [ -d "tests" ] && find tests -name '*_test.go' -maxdepth 1 2>/dev/null | grep -q .; then
+            cd tests && go test -v ./...
+          else
+            echo "No integration tests directory or test files found, skipping"
+          fi
         continue-on-error: false
 
   docker-build:
