@@ -1,0 +1,41 @@
+# ============================================================
+# Kubernetes 部署配置 — 命名空间
+# ============================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ecommerce
+  labels:
+    app.kubernetes.io/name: ecommerce
+    app.kubernetes.io/managed-by: ArgoCD
+    environment: {{ .Values.global.environment }}
+---
+# ============================================================
+# 通用 ConfigMap（各服务共享配置）
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-env
+  namespace: ecommerce
+data:
+  TZ: "Asia/Shanghai"
+  LOG_LEVEL: "{{ .Values.global.logLevel }}"
+  LOG_FORMAT: json
+---
+# ============================================================
+# 通用 Secrets（使用 SealedSecrets / ExternalSecrets）
+# 不推荐直接使用明文 Secret
+# ============================================================
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-secrets
+  namespace: ecommerce
+type: Opaque
+# {{- if .Values.secrets }}
+# data:
+#   DATABASE_URL: {{ .Values.secrets.databaseUrl | b64enc }}
+#   REDIS_URL: {{ .Values.secrets.redisUrl | b64enc }}
+#   JWT_SECRET: {{ .Values.secrets.jwtSecret | b64enc }}
+# {{- end }}

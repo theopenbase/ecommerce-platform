@@ -1,0 +1,198 @@
+# ============================================================
+# Kubernetes — HPA (Horizontal Pod Autoscaler)
+# 基于 CPU / Memory 自动扩缩容
+# ============================================================
+
+# Frontend HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 10
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+        - type: Pods
+          value: 4
+          periodSeconds: 15
+      selectPolicy: Max
+
+---
+# User Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: user-service
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 0
+
+---
+# Product Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: product-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: product-service
+  minReplicas: 2
+  maxReplicas: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+
+---
+# Order Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 3
+  maxReplicas: 100
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+    - type: Pods
+      pods:
+        metric:
+          name: order_queue_depth
+        target:
+          type: AverageValue
+          averageValue: "100"
+
+---
+# Payment Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: payment-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: payment-service
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+
+---
+# Marketing Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: marketing-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: marketing-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+---
+# Shop Service HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: shop-service-hpa
+  namespace: ecommerce
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: shop-service
+  minReplicas: 1
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

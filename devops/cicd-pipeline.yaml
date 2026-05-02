@@ -1,0 +1,306 @@
+# ============================================================
+# 货架式全类目电商平台 — CI/CD 流水线设计
+# ============================================================
+# 架构风格：GitHub Actions + ArgoCD (GitOps)
+# 分支策略：GitFlow (main / develop / feature/* / release/*)
+# 部署环境：dev → staging → production
+# ============================================================
+
+name: E-Commerce CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, 'release/*', 'feature/*']
+  pull_request:
+    branches: [main, develop]
+
+env:
+  REGISTRY: registry.example.com
+  REGISTRY_USERNAME: ci-bot
+  K8S_CLUSTER_PROD: prod-cluster
+  K8S_CLUSTER_STAGING: staging-cluster
+  ARGOCD_URL: https://argocd.example.com
+  ARGOCD_APP_PREFIX: ecommerce
+  GOPRIVATE: github.com/ecommerce
+  GONOSUMDB: github.com/ecommerce/*
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Stage 1: Code Quality & Security Scan
+  # ─────────────────────────────────────────────
+  code-quality:
+    name: 🔍 Code Quality & Security
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: true
+          cache-dependency-path: '**/go.sum'
+
+      - name: Install tools
+        run: |
+          npm ci
+          python -m pip install --upgrade pip
+          pip install pylint ruff bandit semgrep
+
+      - name: Lint (Frontend)
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Lint (Python Backend)
+        run: |
+          ruff check . --output-format=github
+          pylint **/*.py || true
+
+      - name: Lint (Go Backend)
+        run: |
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          golangci-lint run ./... || true
+
+      - name: Security Scan (Semgrep)
+        run: semgrep --config=auto --json --output=semgrep.json .
+
+      - name: Dependency Audit
+        run: npm audit --audit-level=moderate || true
+
+      - name: Upload Security Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: semgrep.json
+          retention-days: 7
+
+  # ─────────────────────────────────────────────
+  # Stage 2: Unit Tests
+  # ─────────────────────────────────────────────
+  unit-tests:
+    name: 🧪 Unit Tests
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        service:
+          - frontend
+          - user-service
+          - goods-service
+          - order-service
+          - payment-service
+          - marketing-service
+          - shop-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect service from path
+        id: service
+        run: echo "name=${{ matrix.service }}" >> $GITHUB_OUTPUT
+
+      - name: Test Frontend
+        if: matrix.service == 'frontend'
+        run: |
+          cd frontend && npm ci && npm run test:unit -- --coverage --json
+
+      - name: Test Go Services
+        if: "contains(fromJson('["user-service", "goods-service", "order-service", "payment-service", "marketing-service", "shop-service"]'), matrix.service)"
+        run: |
+          cd ${{ matrix.service }}
+          go mod download
+          go test -v -coverprofile=coverage.out ./...
+
+      - name: Upload Coverage
+        uses: codecov/codecov-action@v3
+        if: always()
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+
+  # ─────────────────────────────────────────────
+  # Stage 3: Build & Push Docker Images
+  # ─────────────────────────────────────────────
+  build:
+    name: 📦 Build & Push Image
+    runs-on: ubuntu-22.04
+    needs: [code-quality, unit-tests]
+    if: github.event_name == 'push'
+    strategy:
+      matrix:
+        service:
+          - frontend
+          - user-service
+          - goods-service
+          - order-service
+          - payment-service
+          - marketing-service
+          - shop-service
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ env.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Build & Push (Go services)
+        if: "contains(fromJson('["payment-service", "marketing-service", "shop-service"]'), matrix.service)"
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+            SERVICE_NAME=${{ matrix.service }}
+
+      - name: Build & Push (Python/Frontend services)
+        if: "!contains(fromJson('["payment-service", "marketing-service", "shop-service"]'), matrix.service)"
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GIT_SHA=${{ github.sha }}
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
+
+  # ─────────────────────────────────────────────
+  # Stage 4: Integration Tests (E2E)
+  # ─────────────────────────────────────────────
+  e2e-tests:
+    name: 🌐 E2E Integration Tests
+    runs-on: ubuntu-22.04
+    needs: [build]
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging (kind)
+        uses: konjio.io/kind-action@v1
+        with:
+          name: e2e-cluster
+          installIngress: true
+
+      - name: Deploy chart
+        run: |
+          helm upgrade --install ecommerce ./deploy/helm/ecommerce \
+            --namespace ecommerce-staging \
+            --create-namespace \
+            --set global.image.tag=${{ github.sha }} \
+            --wait --timeout 5m
+
+      - name: Run Playwright E2E
+        run: |
+          npm install -g playwright
+          npx playwright install --with-deps chromium
+          npx playwright test e2e/ \
+            --reporter=list \
+            --base-url=http://localhost:8080
+
+  # ─────────────────────────────────────────────
+  # Stage 5: ArgoCD Sync (GitOps)
+  # ─────────────────────────────────────────────
+  argocd-sync:
+    name: 🚀 ArgoCD Sync
+    runs-on: ubuntu-22.04
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    environment:
+      name: staging
+    steps:
+      - name: Checkout infra repo
+        uses: actions/checkout@v4
+        with:
+          repository: example/ecommerce-gitops
+          path: gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+
+      - name: Update image tag in gitops
+        run: |
+          cd gitops
+          # Update all service image tags in kustomization files
+          find . -name 'kustomization.yaml' -exec sed -i \
+            "s|sha:.*|sha: ${{ github.sha }}|g" {} \;
+          git config user.name "CI Bot"
+          git config user.email "ci@example.com"
+          git add .
+          git diff --staged --quiet || git commit -m "chore: sync images to ${{ github.sha }}"
+          git push
+
+      - name: Trigger ArgoCD sync
+        run: |
+          argocd app set ${{ env.ARGOCD_APP_PREFIX }}-staging \
+            --sync-policy automated \
+            --auto-prune \
+            --self-heal
+          argocd app sync ${{ env.ARGOCD_APP_PREFIX }}-staging
+
+  # ─────────────────────────────────────────────
+  # Stage 6: Notify (Slack / Teams)
+  # ─────────────────────────────────────────────
+  notify:
+    name: 📬 Notification
+    runs-on: ubuntu-22.04
+    needs: [build, argocd-sync]
+    if: always()
+    steps:
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"❌ CI/CD Failed: '${{ github.workflow }}' on '${{ github.ref }}'"}'
+
+      - name: Notify on success
+        if: success()
+        run: |
+          curl -X POST ${{ secrets.SLACK_WEBHOOK }} \
+            -H 'Content-type: application/json' \
+            --data '{"text":"✅ CI/CD Passed: '${{ github.workflow }}' → '${{ github.ref }}'"}

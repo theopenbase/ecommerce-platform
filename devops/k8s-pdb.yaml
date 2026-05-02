@@ -1,0 +1,88 @@
+# ============================================================
+# Kubernetes — PodDisruptionBudget (可用性保护)
+# 确保滚动更新 / 节点排空时不中断服务
+# ============================================================
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: frontend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: user-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: user-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: product-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: product-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: order-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: order-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payment-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: payment-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: marketing-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: marketing-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: shop-service-pdb
+  namespace: ecommerce
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: shop-service

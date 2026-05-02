@@ -1,0 +1,192 @@
+# ============================================================
+# Helm Chart — values.yaml 模板
+# 部署命令：
+#   helm upgrade --install ecommerce ./deploy/helm/ecommerce -f values.yaml -n ecommerce
+# ============================================================
+
+global:
+  environment: staging        # development | staging | production
+  domain: example.com
+  registry: registry.example.com
+  imageTag: latest
+  logLevel: INFO
+  serviceName: ecommerce-platform
+
+# ─────────────────────────────────────────────
+# Frontend
+# ─────────────────────────────────────────────
+frontend:
+  replicas: 2
+  image: frontend
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# ─────────────────────────────────────────────
+# Backend Services — 用户服务
+# ─────────────────────────────────────────────
+userService:
+  replicas: 2
+  image: user-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Backend Services — 商品服务
+# ─────────────────────────────────────────────
+productService:
+  replicas: 2
+  image: product-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Backend Services — 订单服务
+# ─────────────────────────────────────────────
+orderService:
+  replicas: 3
+  image: order-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Backend Services — 支付服务
+# ─────────────────────────────────────────────
+paymentService:
+  replicas: 2
+  image: payment-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Backend Services — 营销服务
+# ─────────────────────────────────────────────
+marketingService:
+  replicas: 1
+  image: marketing-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Backend Services — 店铺服务
+# ─────────────────────────────────────────────
+shopService:
+  replicas: 1
+  image: shop-service
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+# ─────────────────────────────────────────────
+# Storage
+# ─────────────────────────────────────────────
+storage:
+  storageClass: gp3              # AWS EBS / GCP PD / Azure Disk
+  mysql:
+    size: 50Gi
+  redis:
+    size: 10Gi
+  minio:
+    size: 100Gi
+  elasticsearch:
+    size: 200Gi
+
+# ─────────────────────────────────────────────
+# 数据库
+# ─────────────────────────────────────────────
+database:
+  host: mysql.database.svc.cluster.local
+  port: 5432
+  name: ecommerce
+
+# ─────────────────────────────────────────────
+# Redis
+# ─────────────────────────────────────────────
+redis:
+  host: redis-master.database.svc.cluster.local
+  port: 6379
+
+# ─────────────────────────────────────────────
+# 消息队列
+# ─────────────────────────────────────────────
+mq:
+  host: rabbitmq.database.svc.cluster.local
+  port: 5672
+  kafka:
+    bootstrapServers: kafka.kafka.svc.cluster.local:9092
+
+# ─────────────────────────────────────────────
+# 搜索
+# ─────────────────────────────────────────────
+search:
+  host: elasticsearch-master.logging.svc.cluster.local
+  port: 9200
+
+# ─────────────────────────────────────────────
+# 监控
+# ─────────────────────────────────────────────
+monitoring:
+  otelEndpoint: otel-collector.logging.svc.cluster.local:4317
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
+
+# ─────────────────────────────────────────────
+# 密钥（生产环境使用 SealedSecrets / ExternalSecrets）
+# 以下为占位符，请通过 --set 或 Vault 注入
+# ─────────────────────────────────────────────
+secrets:
+  # databaseUrl: postgresql://user:pass@host:5432/db
+  # redisUrl: redis://:pass@host:6379
+  # jwtSecret: change-me-in-production
+  # dbUser: ecommerce
+  # dbPassword: ""
+  # redisPassword: ""
+  # s3AccessKey: ""
+  # s3SecretKey: ""
+  # alipayAppId: ""
+  # alipayPrivateKey: ""
+  # wechatMchId: ""
+  # paymentWebhookSecret: ""
+  # rabbitmqUser: guest
+  # rabbitmqPassword: ""
+  # smsAccessKey: ""
+  # smsAccessSecret: ""
+  # emailSmtpHost: ""
+  # emailSmtpPort: 587
+  # emailSmtpUser: ""
+  # emailSmtpPassword: ""

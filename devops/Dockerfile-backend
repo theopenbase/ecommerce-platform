@@ -1,0 +1,51 @@
+# ============================================================
+# 电商平台 — 后端服务 (Python FastAPI / Django)
+# 多阶段构建，优化体积
+# ============================================================
+# Stage 1: 依赖安装
+# Stage 2: 预编译 Python bytecode (.pyc)
+# Stage 3: 运行时镜像（distroless）
+# ============================================================
+
+# ── Stage 1: Builder ───────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+# 安装编译依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# 优先安装依赖（利用缓存）
+COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+# ── Stage 2: Copy and compile ───────────────────────────────
+FROM python:3.11-slim AS compiler
+WORKDIR /build
+COPY --from=builder /install /usr/local
+COPY . .
+RUN python -m compileall -q . || true
+
+# ── Stage 3: Runtime (distroless) ─────────────────────────
+FROM gcr.io/distroless/python3-debian11 AS runtime
+
+# 运行时必要文件
+COPY --from=compiler /usr/local /usr/local
+COPY --from=compiler /build /app
+
+WORKDIR /app
+
+# 安全：只读文件系统 + 非 root
+USER nonroot
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+# gunicorn 作为 WSGI server（多进程 + 超时控制）
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "--access-logfile", "-", "main:app"]

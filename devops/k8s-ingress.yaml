@@ -1,0 +1,102 @@
+# ============================================================
+# Kubernetes — Ingress + cert-manager (TLS)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ecommerce-ingress
+  namespace: ecommerce
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - "{{ .Values.global.domain }}"
+        - "api.{{ .Values.global.domain }}"
+        - "admin.{{ .Values.global.domain }}"
+      secretName: ecommerce-tls
+  rules:
+    # 前台主站
+    - host: "{{ .Values.global.domain }}"
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-svc
+                port:
+                  number: 80
+
+    # API 网关
+    - host: "api.{{ .Values.global.domain }}"
+      http:
+        paths:
+          - path: /user
+            pathType: Prefix
+            backend:
+              service:
+                name: user-service-svc
+                port:
+                  number: 8000
+          - path: /product
+            pathType: Prefix
+            backend:
+              service:
+                name: product-service-svc
+                port:
+                  number: 8000
+          - path: /order
+            pathType: Prefix
+            backend:
+              service:
+                name: order-service-svc
+                port:
+                  number: 8000
+          - path: /payment
+            pathType: Prefix
+            backend:
+              service:
+                name: payment-service-svc
+                port:
+                  number: 8000
+          - path: /marketing
+            pathType: Prefix
+            backend:
+              service:
+                name: marketing-service-svc
+                port:
+                  number: 8000
+          - path: /shop
+            pathType: Prefix
+            backend:
+              service:
+                name: shop-service-svc
+                port:
+                  number: 8000
+
+---
+# ============================================================
+# cert-manager ClusterIssuer (Let's Encrypt)
+# ============================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@example.com
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

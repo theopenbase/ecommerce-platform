@@ -1,0 +1,36 @@
+{
+  "_comment": "枚举值定义 — 来自 product-service 源码对齐",
+  "sku_status": {
+    "0": "待上架（Pending shelf）",
+    "1": "上架（On shelf / Active）",
+    "2": "下架（Off shelf）",
+    "3": "售罄（Sold out）",
+    "4": "归档（Archived）"
+  },
+  "spu_audit_status": {
+    "0": "待审核（Pending audit）",
+    "1": "通过（Approved）",
+    "2": "拒绝（Rejected）"
+  },
+  "shop_status": {
+    "0": "待审核（Pending approval）",
+    "1": "正常（Active）",
+    "2": "封禁（Banned）",
+    "3": "清退（Removed）"
+  },
+  "order_status": {
+    "0": "待付款（Pending payment）",
+    "1": "已取消（Cancelled）",
+    "2": "已付款/待发货（Paid / Pending shipment）",
+    "3": "已发货/待收货（Delivered / Pending receive）",
+    "4": "已收货/待评价（Received / Pending review）",
+    "5": "已完成（Completed）",
+    "6": "维权中（Dispute）"
+  },
+  "stock_operation": {
+    "freeze":   "冻结库存（减可用库存）",
+    "unfreeze": "解冻库存（还可用库存）",
+    "deduct":   "扣减库存（下单成功）",
+    "restore":  "归还库存（取消/退款）"
+  }
+}
