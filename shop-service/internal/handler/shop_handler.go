@@ -2,7 +2,6 @@ package handler
 
 import (
 	security "github.com/ecommerce/common/middleware/security"
-	"fmt"
 	"net/http"
 	"strconv"
 

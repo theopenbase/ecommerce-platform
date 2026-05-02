@@ -239,7 +239,7 @@ func (s *MarketingService) GetSkuPromotion(ctx context.Context, skuID uint64) (*
 
 // DeductPromotionStock 扣减活动库存（下单成功时）
 func (s *MarketingService) DeductPromotionStock(ctx context.Context, promotionSkuID uint64, quantity int) error {
-	ps, err := s.repo.FindPromotionSkuByID(ctx, promotionSkuID)
+	ps, err := s.repo.FindPromotionSkuBySkuID(ctx, promotionSkuID)
 	if err != nil {
 		return ErrSkuNotInPromotion
 	}
@@ -250,9 +250,7 @@ func (s *MarketingService) DeductPromotionStock(ctx context.Context, promotionSk
 }
 
 func (s *MarketingService) FindPromotionSkuByID(ctx context.Context, id uint64) (*model.PromotionSku, error) {
-	var ps model.PromotionSku
-	err := s.repo.ListPromotionSkus(ctx, id)
-	return &ps, err
+	return s.repo.FindPromotionSkuBySkuID(ctx, id)
 }
 
 func generateCouponCode() string {

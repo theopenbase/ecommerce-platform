@@ -4,6 +4,7 @@ import (
 	security "github.com/ecommerce/common/middleware/security"
 	"net/http"
 
+	"fmt"
 	"github.com/gin-gonic/gin"
 
 	"github.com/ecommerce/payment-service/internal/model"

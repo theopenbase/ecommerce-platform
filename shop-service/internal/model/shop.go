@@ -33,7 +33,7 @@ type Shop struct {
 	DSRProduct  float64    `gorm:"type:decimal(3,2);default:0" json:"dsr_product"`  // 商品描述DSR
 	DSRService  float64    `gorm:"type:decimal(3,2);default:0" json:"dsr_service"`  // 服务态度DSR
 	DSRLogistics float64   `gorm:"type:decimal(3,2);default:0" json:"dsr_logistics"` // 物流DSR
-	DSR Overall float64    `gorm:"-" json:"dsr_overall"` // 计算字段
+	DSROverall float64    `gorm:"-" json:"dsr_overall"` // 计算字段
 	FollowerCount uint64   `gorm:"default:0" json:"follower_count"`
 	CreatedAt   time.Time  `gorm:"type:datetime;not null;default:current_timestamp" json:"created_at"`
 	UpdatedAt   time.Time  `gorm:"type:datetime;not null;default:current_timestamp on update current_timestamp" json:"updated_at"`
