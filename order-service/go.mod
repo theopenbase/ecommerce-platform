@@ -50,3 +50,4 @@ require (
 replace github.com/ecommerce/common => ../common
 
 replace github.com/ecommerce/order-service/internal/pkg/goodsclient => ./internal/pkg/goods_client
+

@@ -56,3 +56,7 @@ replace github.com/ecommerce/user-service/internal/pkg/smc => ./internal/pkg/smc
 replace github.com/ecommerce/user-service/internal/pkg/redis => ./internal/pkg/redis
 
 replace github.com/ecommerce/common => ../common
+
+replace github.com/ecommerce/user-service/internal/pkg/jwt => ./internal/pkg/jwt
+replace github.com/ecommerce/user-service/internal/pkg/smc => ./internal/pkg/smc
+replace github.com/ecommerce/user-service/internal/pkg/redis => ./internal/pkg/redis
